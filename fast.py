@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import load_breast_cancer
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import ParameterGrid
 from sklearn.metrics import balanced_accuracy_score
 from matplotlib import pyplot as plt
 
@@ -46,6 +47,40 @@ decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
 
 bacc = balanced_accuracy_score(decision['y'], decision['yhat'])
 
+bacc
+
+# wrap in a function
+
+def calculate_bacc(feature, percentile):
+    threshold = np.percentile(X[feature], percentile)
+    feature_cuts = np.where(X[feature] > threshold, 'left', 'right')
+    decision = pd.DataFrame(zip(X[feature], feature_cuts, y), columns=['feature', 'cut', 'y'])
+    majority = decision.groupby('cut')['y'].mean()
+    # BUG: maybe could be the same, or maybe doesn't get rounded?
+    left = round(majority['left'])
+    right = round(majority['right'])
+    decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
+    bacc = balanced_accuracy_score(decision['y'], decision['yhat'])
+    return bacc
+
+features_and_thresholds = pd.DataFrame()
+
+grid = ParameterGrid({
+    'feature': df.columns,
+    'percentile': [10, 20, 30, 40, 50, 60, 70, 80, 90]
+})
+
+features_and_percentiles = pd.DataFrame(grid)
+features_and_percentiles.apply(bacc)
+features_and_thresholds.apply(lambda x: bacc(x['feature'], x['percentile']), axis=1)
+feat_
+
+
+
+for i in range(1, 10):
+    i *= 10
+    bacc = calculate_bacc('worst_concave_points', i)
+    print(i, bacc)
 
 
 
