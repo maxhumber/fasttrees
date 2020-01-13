@@ -9,21 +9,16 @@ from matplotlib import pyplot as plt
 %matplotlib inline
 
 cancer = load_breast_cancer()
-cancer.keys()
-
 df = pd.DataFrame(cancer.data, columns=cancer.feature_names)
 df.columns = [c.replace(' ', '_') for c in df.columns]
 df['target'] = cancer.target
-
-df.info()
-df.corrwith(df['target']).sort_values()
-
 df['target'] = df.target.replace({0: 'malignant', 1: 'benign'})
+
+# separation
 
 target = 'target'
 X = df.drop(target, axis=1)
 y = df[target]
-
 le = LabelEncoder()
 y = le.fit_transform(y)
 
@@ -47,8 +42,6 @@ decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
 
 bacc = balanced_accuracy_score(decision['y'], decision['yhat'])
 
-bacc
-
 # wrap in a function
 
 def calculate_bacc(feature, percentile):
@@ -63,25 +56,57 @@ def calculate_bacc(feature, percentile):
     bacc = balanced_accuracy_score(decision['y'], decision['yhat'])
     return bacc
 
-features_and_thresholds = pd.DataFrame()
+# parametergrid
 
 grid = ParameterGrid({
-    'feature': df.columns,
+    'feature': X.columns,
     'percentile': [10, 20, 30, 40, 50, 60, 70, 80, 90]
 })
 
-features_and_percentiles = pd.DataFrame(grid)
-features_and_percentiles.apply(bacc)
-features_and_thresholds.apply(lambda x: bacc(x['feature'], x['percentile']), axis=1)
-feat_
+fp = pd.DataFrame(grid)
+
+fp['bacc'] = None
+for i, row in fp.iterrows():
+    bacc = calculate_bacc(row['feature'], row['percentile'])
+    fp.at[i, 'bacc'] = bacc
+
+fp = fp.sort_values('bacc', ascending=False)
+feature, percentile, bacc = fp.head(1).values[0]
+
+feature
+percentile
+bacc
 
 
 
-for i in range(1, 10):
-    i *= 10
-    bacc = calculate_bacc('worst_concave_points', i)
-    print(i, bacc)
+from typing import List
+from itertools import combinations
 
+def gini(x: List[float]) -> float:
+    x = np.array(x, dtype=np.float32)
+    n = len(x)
+    diffs = sum(abs(i - j) for i, j in combinations(x, r=2))
+    return diffs / (2 * n**2 * x.mean())
+
+X[feature]
+threshold = np.percentile(X[feature], percentile)
+feature_cuts = np.where(X[feature] > threshold, 'left', 'right')
+decision = pd.DataFrame(zip(feature_cuts, y), columns=['cut', 'y'])
+majority = decision.groupby('cut')['y'].mean()
+left = int(round(majority['left']))
+right = int(round(majority['right']))
+decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
+
+left = decision[decision['cut'] == 'left']['y'].values.tolist()
+right = decision[decision['cut'] == 'right']['y'].values.tolist()
+
+gini(left)
+gini(right)
+
+len(left)
+len(right)
+
+# then go to next level
 
 
 
