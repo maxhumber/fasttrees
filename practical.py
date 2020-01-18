@@ -7,14 +7,10 @@ from sklearn.model_selection import ParameterGrid, train_test_split
 from sklearn.metrics import balanced_accuracy_score
 %matplotlib inline
 
-# FastAndGreedyClassifier
-# GreedyAndEasy
-# EasyGreedyTreeClassifier
-# HandyTreeClassifier
-# PracticalTreeClassifier
-#
-# practicaltrees
-# from practicaltrees import PracticalTreeClassifier
+# from practical import PracticalTreeClassifier
+
+# guidance
+# https://cran.r-project.org/web/packages/FFTrees/vignettes/FFTrees_algorithm.html
 
 # data prep
 
