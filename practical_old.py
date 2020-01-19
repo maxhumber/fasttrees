@@ -33,11 +33,33 @@ X_train, X_test, y_train, y_test = train_test_split(
 # WIP build
 
 feature = 'worst_concave_points'
+
 max_levels = 4
 max_thresholds = 10
+
 thresholds = np.linspace(0, 100, num=max_thresholds+1)[1:-1]
 
-# funtionize
+percentile = thresholds[4]
+threshold = np.percentile(X[feature], percentile)
+directions = np.where(X[feature] <= threshold, 'left', 'right')
+
+node = pd.DataFrame(zip(X[feature], directions, y), columns=['feature', 'direction', 'y'])
+majority = node.groupby('direction')['y'].mean()
+
+if majority['left'] <= majority['right']:
+    left, right = 0, 1
+else:
+    left, right = 1, 0
+
+node['yhat'] = node['direction'].replace({'left': left, 'right': right})
+
+metric = balanced_accuracy_score
+
+metric(node['y'], node['yhat'])
+
+node
+
+# package attempt 2
 
 def score_feature(Xi, y, percentile=50, metric=balanced_accuracy_score):
     threshold = np.percentile(Xi, percentile)
@@ -55,28 +77,8 @@ def score_feature(Xi, y, percentile=50, metric=balanced_accuracy_score):
 feature = 'worst_concave_points'
 Xi = X[feature]
 score, _ = score_feature(Xi, y)
+_
 
-# parametergrid
-
-grid = pd.DataFrame(
-    ParameterGrid({
-        'feature': X.columns,
-        'percentile': np.linspace(0, 100, num=max_thresholds+1)[1:-1]
-    })
-)
-
-grid['score'] = None
-for i, row in grid.iterrows():
-    Xi = X[row['feature']]
-    score, _ = score_feature(Xi, y, row['percentile'])
-    grid.at[i, 'score'] = score
-
-grid = grid.sort_values('score', ascending=False)
-feature, percentile, bacc = fp.head(1).values[0]
-
-feature
-percentile
-bacc
 
 
 ### decide which direction to split next
@@ -97,3 +99,69 @@ else:
     next_split_direction = 'right'
 
 X[node['direction'] == next_split_direction]
+
+
+
+
+# wrap in a function
+
+def calculate_bacc(feature, percentile):
+    threshold = np.percentile(X[feature], percentile)
+    feature_cuts = np.where(X[feature] > threshold, 'left', 'right')
+    decision = pd.DataFrame(zip(X[feature], feature_cuts, y), columns=['feature', 'cut', 'y'])
+    majority = decision.groupby('cut')['y'].mean()
+    # BUG: maybe could be the same, or maybe doesn't get rounded?
+    left = round(majority['left'])
+    right = round(majority['right'])
+    decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
+    bacc = balanced_accuracy_score(decision['y'], decision['yhat'])
+    return bacc
+
+# parametergrid
+
+grid = ParameterGrid({
+    'feature': X.columns,
+    'percentile': [10, 20, 30, 40, 50, 60, 70, 80, 90]
+})
+
+fp = pd.DataFrame(grid)
+
+fp['bacc'] = None
+for i, row in fp.iterrows():
+    bacc = calculate_bacc(row['feature'], row['percentile'])
+    fp.at[i, 'bacc'] = bacc
+
+fp = fp.sort_values('bacc', ascending=False)
+feature, percentile, bacc = fp.head(1).values[0]
+
+feature
+percentile
+bacc
+
+
+
+
+
+X[feature]
+threshold = np.percentile(X[feature], percentile)
+feature_cuts = np.where(X[feature] > threshold, 'left', 'right')
+decision = pd.DataFrame(zip(feature_cuts, y), columns=['cut', 'y'])
+majority = decision.groupby('cut')['y'].mean()
+left = int(round(majority['left']))
+right = int(round(majority['right']))
+decision['yhat'] = decision['cut'].replace({'left': left, 'right': right})
+
+left = decision[decision['cut'] == 'left']['y'].values.tolist()
+right = decision[decision['cut'] == 'right']['y'].values.tolist()
+
+gini(left)
+gini(right)
+
+len(left)
+len(right)
+
+# then go to next level
+
+
+
+###
